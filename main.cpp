@@ -42,8 +42,8 @@ int Alvos::getPosicaoX(){
 int Alvos::getPosicaoY(){
     return y;
 }
-bool Alvos::setState(bool pos){
-    state = pos;
+bool Alvos::setState(bool s){
+    state = s;
 }
 
 bool Alvos::getState()
@@ -99,7 +99,7 @@ Alvos generateAlvos(int x, int y,bool s){
     Alvos auxalvo;
     auxalvo.setPosicaoX(x);
     auxalvo.setPosicaoY(y);
-    auxalvo.setState(s)
+    auxalvo.setState(s);
 
     return auxalvo;
 
