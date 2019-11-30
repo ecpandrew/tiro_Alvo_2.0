@@ -11,11 +11,16 @@ public:
     void setPosicaoY(int y);
     int getPosicaoX();
     int getPosicaoY();
+    bool setState(bool s);
+    bool getState();
+
 
 
 private:
     int x;
     int y;
+    bool state;
+
 
 };
 
@@ -37,7 +42,14 @@ int Alvos::getPosicaoX(){
 int Alvos::getPosicaoY(){
     return y;
 }
-//fim dojogo
+bool Alvos::setState(bool pos){
+    state = pos;
+}
+
+bool Alvos::getState()
+{
+    return state;
+}//fim dojogo
 static bool endgame = false;
 GLfloat r,g,b;
 //Flexa
@@ -83,10 +95,11 @@ void init(void){
   glOrtho (0, 500, 0, 500,0,1);
   r=0; g=1; b=0;
 }
-Alvos generateAlvos(int x, int y){
+Alvos generateAlvos(int x, int y,bool s){
     Alvos auxalvo;
     auxalvo.setPosicaoX(x);
     auxalvo.setPosicaoY(y);
+    auxalvo.setState(s)
 
     return auxalvo;
 
