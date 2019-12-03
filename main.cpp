@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
+#define M_PI 3.14159265358979323846
 
 //Classe dos alvos
 class Alvos
 {
-
 public:
   void setPosicaoX(int x);
   void setPosicaoY(int y);
@@ -31,8 +32,10 @@ void Alvos::setPosicaoX(int pos)
 }
 void Alvos::setPosicaoY(int pos)
 {
+
   y = pos;
 }
+
 void Alvos::setStatus(bool s)
 {
   status = s;
@@ -42,16 +45,7 @@ void Alvos::setTamanho(int t)
 
   tamanho = t;
 }
-int Alvos::getTamanho()
-{
 
-  return tamanho;
-}
-
-bool Alvos::getStatus()
-{
-  return status;
-}
 int Alvos::getPosicaoX()
 {
   return x;
@@ -61,59 +55,48 @@ int Alvos::getPosicaoY()
 {
   return y;
 }
+bool Alvos::getStatus()
+{
+  return status;
+}
+int Alvos::getTamanho()
+{
+  return tamanho;
+}
 
 //fim dojogo
 static bool endgame = false;
 GLfloat r, g, b;
 //Flexa
 float x_PF = 10.0, y_PF = 10.0;
+
+static int global_value = 1;
 //velocidade constante;
-static float gr = 9.81, v = 2;
+static float gr = 9.81, v = 5;
 //angulo da seta;
 static int angulo = -10, angulof;
 //ponstos da tragetoria
-static float pontos_sx[20];
-static float pontos_y[20];
+static float pontos_x[80];
+static float pontos_y[80];
 static Alvos lista_alvos[5];
+bool stateseta = true;
 
 //para reshape
 static float px, py;
 void init(void);
+void initAlvos(void);
 void display(void);
 void keyboard(unsigned char key, int x, int y);
 void reshape(int w, int h);
 void mouse(int button, int state, int x, int y);
 void movimentaSeta(int value);
-void movimentaAlvo(int value);
-void movimentaSetaAlvo(int value);
-Alvos generateAlvos(int x, int y, int tamanho, bool status);
-void initAlvos();
+void trajetoriaSeta();
+void desenhaFlexa();
+void specialInputDoTeclado(int key, int x, int y);
 
-void desenhaAlvo();
+void desenhaTrajetoria();
 
-void initAlvos()
-{
-  Alvos alvo1 = generateAlvos(200, 200, 30, false);
-  Alvos alvo2 = generateAlvos(150, 200, 30, false);
-  Alvos alvo3 = generateAlvos(80, 100, 30, false);
-  Alvos alvo4 = generateAlvos(300, 40, 30, false);
-
-  lista_alvos[0] = alvo1;
-  lista_alvos[1] = alvo2;
-  lista_alvos[2] = alvo3;
-  lista_alvos[3] = alvo4;
-}
-
-void desenhaAlvo()
-{
-  for (int i = 0; i <= 3; i++)
-  {
-    Alvos alvo = lista_alvos[i];
-
-    glColor3i(0, 1, 0);
-    glRecti(alvo.getPosicaoX(), alvo.getPosicaoY(), alvo.getPosicaoX() + alvo.getTamanho(), alvo.getPosicaoY() + alvo.getTamanho());
-  }
-}
+Alvos generateAlvos(int x, int y);
 
 int main(int argc, char **argv)
 {
@@ -123,15 +106,14 @@ int main(int argc, char **argv)
   glutInitWindowPosition(100, 100);
   glutCreateWindow("Tiro ao Alvo");
   init();
-
   initAlvos();
-
   glutDisplayFunc(display);
   glutReshapeFunc(reshape);
   glutKeyboardFunc(keyboard);
   glutMouseFunc(mouse);
-  glutTimerFunc(33, movimentaSeta, 1);
-  //glutIdleFunc(movimentaSeta);
+  // glutTimerFunc(33, movimentaSeta, 1);
+  glutSpecialFunc(specialInputDoTeclado);
+
   glutMainLoop();
   return 0;
 }
@@ -151,9 +133,36 @@ Alvos generateAlvos(int x, int y, int tamanho, bool status)
   auxalvo.setPosicaoY(y);
   auxalvo.setStatus(status);
   auxalvo.setTamanho(tamanho);
+
   return auxalvo;
 }
+void initAlvos()
+{
+  Alvos alvo1 = generateAlvos(200, 200, 30, false);
+  Alvos alvo2 = generateAlvos(150, 200, 30, false);
+  Alvos alvo3 = generateAlvos(80, 100, 30, false);
+  Alvos alvo4 = generateAlvos(300, 300, 30, false);
 
+  lista_alvos[0] = alvo1;
+  lista_alvos[1] = alvo2;
+  lista_alvos[2] = alvo3;
+  lista_alvos[3] = alvo4;
+}
+void desenhaAlvo()
+{
+  for (int i = 0; i <= 3; i++)
+  {
+    Alvos alvo = lista_alvos[i];
+    glPolygonMode(GL_BACK, GL_LINE);
+    glColor3f(r, g, b);
+    glBegin(GL_POLYGON);
+    glVertex2i(alvo.getPosicaoX(), alvo.getPosicaoY());                                         //1
+    glVertex2i(alvo.getPosicaoX() + alvo.getTamanho(), alvo.getPosicaoY());                     //2 cima
+    glVertex2i(alvo.getPosicaoX() + alvo.getTamanho(), alvo.getPosicaoY() + alvo.getTamanho()); //3
+    glVertex2i(alvo.getPosicaoX(), alvo.getPosicaoY() + alvo.getTamanho());                     //4 baixo
+    glEnd();
+  }
+}
 void display(void)
 {
   int i;
@@ -180,10 +189,57 @@ void display(void)
   glVertex2i(390, 300); //4 baixo
   glEnd();
 
+  
+
+  desenhaAlvo();
+
+  //tragetoria seta
+  if (stateseta)
+  {
+    desenhaFlexa();
+    desenhaTrajetoria();
+  }else{
+      //Cena da flexa
+      double arg = angulo, result;
+      // Converting to radian
+      arg = (angulo * M_PI) / 180;
+      glPushMatrix();
+      glTranslatef(10, 10, 0);
+      glRotatef(arg, 0, 0, 1);
+      glTranslatef(-10, -10, 0);
+      glColor3f(0.0, 0.0, 0.0);
+      glBegin(GL_LINES);
+      glVertex2d(pontos_x[global_value], pontos_y[global_value]);           //vertice fixo - origem 10,10
+      glVertex2d(pontos_x[global_value] + 30, pontos_y[global_value] + 30); //40,40
+      glEnd();
+
+      glColor3f(0.0, 0.0, 0.0);
+      glBegin(GL_LINES);
+      glVertex2d(pontos_x[global_value] + 20, pontos_y[global_value] + 10); //30,20
+      glVertex2d(pontos_x[global_value] + 30, pontos_y[global_value] + 30); //40,40
+      glEnd();
+
+      glColor3f(0.0, 0.0, 0.0);
+      glBegin(GL_LINES);
+      glVertex2d(pontos_x[global_value] + 10, pontos_y[global_value] + 20); //20,30
+      glVertex2d(pontos_x[global_value] + 30, pontos_y[global_value] + 30); //185,20,0
+      glEnd();
+      glPopMatrix();
+    // nao desenha
+    // desenhaTrajetoria();
+  }
+  glFlush();
+  glutSwapBuffers();
+}
+
+
+
+
+void desenhaFlexa(){
   //Cena da flexa
   glPushMatrix();
   glTranslatef(10, 10, 0);
-  glRotatef(angulo, 0, 0, 1);
+  glRotatef(angulo-45, 0, 0, 1);
   glTranslatef(-10, -10, 0);
   glColor3f(0.0, 0.0, 0.0);
   glBegin(GL_LINES);
@@ -203,29 +259,83 @@ void display(void)
   glVertex2d(x_PF + 30, x_PF + 30); //185,20,0
   glEnd();
   glPopMatrix();
-
-  desenhaAlvo();
-
-  glFlush();
-  glutSwapBuffers();
 }
+
+
+void desenhaTrajetoria(){
+
+  glPushMatrix();
+  glTranslatef(10, 10, 0);
+      glBegin(GL_LINE_STRIP);
+      for (int j = 0; j < 80; j++)
+      {
+      glColor3f(0.0, 0.0, 1.0);
+      glVertex2d(pontos_x[j], pontos_y[j]); //20,30
+      // printf("ponos x: %f\n", pontos_x[j]);
+      // printf("ponos y: %f\n", pontos_y[j]);
+      }
+      glEnd();
+  glPopMatrix();
+
+}
+
 int fim = 0;
 void movimentaSeta(int value)
 {
 
-  if (angulo < 40)
+  if (!stateseta)
   {
-    angulo++;
-  }
+    if(!(value > 70)){
 
-  else
-  {
-    angulo = -10;
-  }
+      glutPostRedisplay();
+      global_value++;
+      glutTimerFunc(33, movimentaSeta, global_value);
+    }else{
+      global_value = 1;
+      stateseta = true;
+      glutPostRedisplay();
 
-  glutPostRedisplay();
-  glutTimerFunc(33, movimentaSeta, 1);
+    }
+  }
 }
+
+void trajetoriaSeta()
+{
+  // scanf("oi:  ");
+  int nPoint = 80;
+  float x, y;
+
+   double arg = angulo, result;
+   // Converting to radian
+   arg = (angulo * M_PI) / 180;
+
+
+  float t_total = (2 * v * sin(arg)) / gr;
+  float t_ponto = t_total / nPoint;
+  float t = 0;
+  float x_0 = 0.0, y_0 = 0.0;
+  for (int i = 0; i < nPoint; i++)
+  {
+
+    //x_PF = 20*(pow(v,2)*sin(2*value))/g;
+    //y_PF = 100*(pow(v,2)*pow(sin(value),2))/2*g;
+    x = 400 * (x_0 + v * cos(arg) * t);
+    y = 400 * (y_0 + v * sin(arg) * t - (g * pow(t, 2)) / 2);
+
+    // printf("x: %f\n", x);
+    // printf("y: %f\n", y);
+
+    pontos_x[i] = x;
+    pontos_y[i] = y;
+    t += t_ponto;
+  }
+
+  // Sleep(200);
+
+  // glutPostRedisplay();
+  // glutTimerFunc(33, trajetoriaSeta, 1);
+}
+
 void keyboard(unsigned char key, int x, int y)
 {
   switch (key)
@@ -254,9 +364,13 @@ void mouse(int button, int state, int x, int y)
   switch (button)
   {
   case GLUT_LEFT_BUTTON:
-    if (state == GLUT_DOWN)
+    if (state == GLUT_DOWN && stateseta == true)
     {
-      angulof = angulo;
+      // angulof = angulo;
+      // trajetoriaSeta();
+      stateseta = false;
+      movimentaSeta(1);
+
       r = (GLfloat)rand() / (RAND_MAX + 1.0);
       g = (GLfloat)rand() / (RAND_MAX + 1.0);
       b = (GLfloat)rand() / (RAND_MAX + 1.0);
@@ -264,3 +378,31 @@ void mouse(int button, int state, int x, int y)
     break;
   }
 }
+
+
+void specialInputDoTeclado(int key, int x, int y)
+{
+    switch (key)
+    {
+    case GLUT_KEY_UP:
+      if(!(angulo>=90-45)){
+        angulo++;
+        trajetoriaSeta();
+        glutPostRedisplay();
+      }
+
+      
+      // glutTimerFunc(33, movimentaSeta, value);
+
+      break;
+
+    case GLUT_KEY_DOWN:
+      if(!(angulo<=0-45)){
+        angulo--;
+        trajetoriaSeta();
+        glutPostRedisplay();
+      }
+      break;
+    }
+}
+
